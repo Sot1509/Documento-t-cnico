@@ -1,51 +1,4 @@
 1. Arquitectura propuesta
-Arquitectura general
-
-Diagrama ER del módulo EPP
-erDiagram
-    EMPRESAS ||--o{ PRODUCTOS : tiene
-    EMPRESAS ||--o{ PEDIDOS : realiza
-    PEDIDOS ||--o{ PEDIDO_ITEMS : contiene
-    EPP ||--o{ PEDIDO_ITEMS : es_incluido_en
-
-    EMPRESAS {
-        int id PK
-        string nombre
-        string direccion
-        datetime created_at
-    }
-
-    PRODUCTOS {
-        int id PK
-        string nombre
-        int empresa_id FK
-        string riesgo_quimico
-        datetime created_at
-    }
-
-    EPP {
-        int id PK
-        string nombre
-        string tipo
-        int stock
-        datetime created_at
-    }
-
-    PEDIDOS {
-        int id PK
-        int empresa_id FK
-        datetime fecha_pedido
-        string estado
-    }
-
-    PEDIDO_ITEMS {
-        int id PK
-        int pedido_id FK
-        int epp_id FK
-        int cantidad
-    }
-
-    Diagrama de arquitectura de microservicios
 flowchart LR
     FRONTEND[React SPA]
     API_GATEWAY[API Gateway]
@@ -65,6 +18,31 @@ flowchart LR
     EPP_SERVICE -->|Eventos| KAFKA
     KAFKA --> NOTIF_SERVICE
     KAFKA --> BILLING_SERVICE
+
+
+
+    Diagrama ER del módulo EPP
+   
+flowchart LR
+    FRONTEND[React SPA]
+    API_GATEWAY[API Gateway]
+    EPP_SERVICE[Microservicio EPP]
+    CHEM_SERVICE[Microservicio Productos Químicos]
+    NOTIF_SERVICE[Microservicio Notificaciones]
+    BILLING_SERVICE[Microservicio Facturación]
+    POSTGRES[PostgreSQL]
+    KAFKA[Kafka/RabbitMQ]
+
+    FRONTEND -->|REST/GraphQL| API_GATEWAY
+    API_GATEWAY --> EPP_SERVICE
+    API_GATEWAY --> CHEM_SERVICE
+    EPP_SERVICE --> POSTGRES
+    CHEM_SERVICE --> POSTGRES
+
+    EPP_SERVICE -->|Eventos| KAFKA
+    KAFKA --> NOTIF_SERVICE
+    KAFKA --> BILLING_SERVICE
+
 
     
     
