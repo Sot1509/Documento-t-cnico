@@ -1,4 +1,5 @@
 1. Arquitectura propuesta
+Arquitectura general
 flowchart LR
     FRONTEND[React SPA]
     API_GATEWAY[API Gateway]
@@ -20,80 +21,29 @@ flowchart LR
     KAFKA --> BILLING_SERVICE
 
 
+Justificación:
 
-    Diagrama ER del módulo EPP
-   
-flowchart LR
-    FRONTEND[React SPA]
-    API_GATEWAY[API Gateway]
-    EPP_SERVICE[Microservicio EPP]
-    CHEM_SERVICE[Microservicio Productos Químicos]
-    NOTIF_SERVICE[Microservicio Notificaciones]
-    BILLING_SERVICE[Microservicio Facturación]
-    POSTGRES[PostgreSQL]
-    KAFKA[Kafka/RabbitMQ]
+Arquitectura basada en microservicios para escalar cada módulo independientemente.
 
-    FRONTEND -->|REST/GraphQL| API_GATEWAY
-    API_GATEWAY --> EPP_SERVICE
-    API_GATEWAY --> CHEM_SERVICE
-    EPP_SERVICE --> POSTGRES
-    CHEM_SERVICE --> POSTGRES
+API Gateway centraliza el acceso y la autenticación.
 
-    EPP_SERVICE -->|Eventos| KAFKA
-    KAFKA --> NOTIF_SERVICE
-    KAFKA --> BILLING_SERVICE
+Comunicación síncrona vía REST/GraphQL y asíncrona vía eventos para notificaciones y facturación.
 
-
-    
-    
-
-Propondría una arquitectura basada en microservicios organizada de la siguiente manera:
-
-Microservicio de EPP (nuevo módulo de pedidos): gestión de pedidos, inventario y reportes.
-
-Microservicio de productos químicos: mantiene la información de los productos químicos.
-
-Microservicio de notificaciones: envía alertas por correo/WhatsApp.
-
-Microservicio de facturación: genera facturas electrónicas de pedidos.
-
-Gateway API: unifica el acceso desde el frontend y gestiona autenticación y autorización.
-
-Patrones recomendados:
-
-REST/GraphQL para comunicación síncrona entre frontend y microservicios.
-
-Eventos asíncronos (RabbitMQ/Kafka) para comunicación entre microservicios (notificaciones, facturación).
-
-Capa de servicio bien definida para separar lógica de negocio de persistencia.
-
-Ventajas:
-
-Escalabilidad independiente de cada módulo.
-
-Facilita integración futura con IA, analítica avanzada y otros servicios.
-
-Flexibilidad para migraciones y actualizaciones tecnológicas.
-
-Comunicación entre módulos
-
-Síncrona: REST APIs internas para consultas puntuales (por ejemplo, validar stock de EPP antes de aprobar pedido).
-
-Asíncrona: Eventos emitidos en colas de mensajería (Kafka/RabbitMQ) para alertas, actualización de inventario y facturación.
+Facilita integración futura con IA, analítica avanzada y nuevos módulos.
 
 2. Stack tecnológico y justificación
 Componente	Justificación
 Spring Boot	Framework robusto, escalable, soporta microservicios, integración fácil con PostgreSQL y mensajería. Incluye validación, seguridad y testing nativos.
-React 18	SPA moderna, reutilización de componentes, fácil integración con APIs REST o GraphQL.
-PostgreSQL	Soporta consultas analíticas complejas, funciones avanzadas (JSONB, CTEs, window functions), transacciones robustas y particionamiento de tablas para grandes volúmenes de datos.
+React 18	SPA moderna, reutilización de componentes, integración con APIs REST o GraphQL.
+PostgreSQL	Mejor soporte para consultas analíticas complejas, funciones avanzadas (JSONB, CTEs, window functions), transacciones robustas y particionamiento.
 
-MySQL vs PostgreSQL
+MySQL vs PostgreSQL:
 
-PostgreSQL permite mejor analítica y extensibilidad: índices más avanzados, tipos de datos ricos, soporte nativo para JSON y agregaciones complejas.
+PostgreSQL ofrece ventajas analíticas y de escalabilidad que MySQL no tiene: índices avanzados, tipos de datos ricos, soporte nativo para JSON y agregaciones complejas.
 
-Migración MySQL → PostgreSQL: usar herramientas como pgloader o scripts de ETL para transformar esquemas y datos. Validar compatibilidad de tipos y procedimientos almacenados.
+Migración: herramientas como pgloader o ETL scripts para transformar esquemas y datos, validando tipos y procedimientos.
 
-Librerías y servicios adicionales
+Librerías y servicios adicionales:
 
 ORM: Spring Data JPA / Hibernate
 
@@ -106,109 +56,99 @@ Seguridad: Spring Security JWT/OAuth2
 Logging y monitorización: ELK Stack / Prometheus & Grafana
 
 3. Estrategia de datos
-Modelo de datos (simplificado)
--- Empresas clientes
-CREATE TABLE empresas (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL,
-    direccion TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+Modelo de datos (ER Diagram)
+erDiagram
+    EMPRESAS ||--o{ PRODUCTOS : tiene
+    EMPRESAS ||--o{ PEDIDOS : realiza
+    PEDIDOS ||--o{ PEDIDO_ITEMS : contiene
+    EPP ||--o{ PEDIDO_ITEMS : es_incluido_en
 
--- Productos químicos
-CREATE TABLE productos (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL,
-    empresa_id INT REFERENCES empresas(id),
-    riesgo_quimico VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    EMPRESAS {
+        int id PK
+        string nombre
+        string direccion
+        datetime created_at
+    }
 
--- EPP (elementos de protección personal)
-CREATE TABLE epp (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    tipo VARCHAR(50), -- Guantes, respirador, gafas
-    stock INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    PRODUCTOS {
+        int id PK
+        string nombre
+        int empresa_id FK
+        string riesgo_quimico
+        datetime created_at
+    }
 
--- Pedidos de EPP
-CREATE TABLE pedidos (
-    id SERIAL PRIMARY KEY,
-    empresa_id INT REFERENCES empresas(id),
-    fecha_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    estado VARCHAR(50) DEFAULT 'PENDIENTE'
-);
+    EPP {
+        int id PK
+        string nombre
+        string tipo
+        int stock
+        datetime created_at
+    }
 
--- Detalle de pedidos
-CREATE TABLE pedido_items (
-    id SERIAL PRIMARY KEY,
-    pedido_id INT REFERENCES pedidos(id),
-    epp_id INT REFERENCES epp(id),
-    cantidad INT NOT NULL
-);
+    PEDIDOS {
+        int id PK
+        int empresa_id FK
+        datetime fecha_pedido
+        string estado
+    }
 
-Relaciones
+    PEDIDO_ITEMS {
+        int id PK
+        int pedido_id FK
+        int epp_id FK
+        int cantidad
+    }
 
-Una empresa puede tener muchos productos y muchos pedidos.
 
-Cada pedido puede incluir múltiples EPP (relación muchos a muchos a través de pedido_items).
+Relaciones:
 
-Inventario de EPP actualizado al aprobar pedidos.
+Una empresa tiene muchos productos y muchos pedidos.
 
-Permite consultas analíticas por tipo de EPP, área de la empresa y período.
+Cada pedido puede incluir múltiples EPP (relación muchos a muchos vía pedido_items).
+
+El inventario de EPP se actualiza al aprobar pedidos.
+
+Permite consultas analíticas por tipo de EPP, área de la empresa y periodo.
 
 4. DevOps y despliegue
 Flujo CI/CD
 
-Desarrollo → Branch feature → Pull Request → Revisión → Merge
+Desarrollo → Feature branch → Pull Request → Revisión → Merge
 
-CI:
+CI: compilación, tests unitarios, análisis de calidad con SonarQube
 
-Compilación y tests unitarios
-
-SonarQube análisis de calidad
-
-CD:
-
-Despliegue a QA (entorno de prueba)
-
-Validación funcional
-
-Despliegue a staging
-
-Despliegue a producción tras aprobación
+CD: despliegue a QA → staging → producción tras validación
 
 Contenedores
 
-Uso Docker para cada microservicio.
+Docker para cada microservicio
 
-Kubernetes para orquestación, escalabilidad automática y tolerancia a fallos.
+Kubernetes para orquestación, escalabilidad automática y tolerancia a fallos
 
-Ventaja: portabilidad y despliegue consistente en cualquier entorno.
+Ventaja: portabilidad, despliegue reproducible y consistente
 
 5. Casos de uso de IA
 Predicción de consumo de EPP
 
-Problema que resuelve: anticipar necesidades de EPP por empresa y tipo de riesgo químico.
+Problema: anticipar necesidades de EPP por empresa y tipo de riesgo químico
 
-Tipo de IA/ML: modelo de series temporales o regresión (p. ej., Prophet o Random Forest).
+Tipo de IA/ML: modelo de series temporales o regresión (Prophet, Random Forest)
 
-Entrada: histórico de pedidos, tipo de EPP, volumen de productos químicos, área de la empresa.
+Entrada: histórico de pedidos, tipo de EPP, volumen de productos químicos, área de la empresa
 
-Salida: predicción de cantidad de EPP a solicitar por período.
+Salida: predicción de cantidad de EPP a solicitar por período
 
-Valor de negocio: optimización de inventario, reducción de faltantes, planificación proactiva de compras.
+Valor de negocio: optimización de inventario, reducción de faltantes, planificación proactiva
 
 6. Justificación de decisiones
 
 Microservicios: escalabilidad modular y fácil integración con nuevas tecnologías. Riesgo: complejidad inicial y gestión de transacciones distribuidas.
 
-Spring Boot + React + PostgreSQL: robustez, soporte para microservicios y analítica avanzada. Riesgo: curva de aprendizaje y migración de código legacy.
+Stack Spring Boot + React + PostgreSQL: robustez, soporte para microservicios y analítica avanzada. Riesgo: curva de aprendizaje y migración de código legacy.
 
 Eventos asíncronos: desacoplan servicios críticos como notificaciones y facturación. Riesgo: monitoreo y manejo de errores más complejo.
 
 Contenedores y Kubernetes: despliegue reproducible y escalable. Riesgo: requiere configuración inicial y experiencia en DevOps.
 
-IA para predicción de EPP: reduce costos y mejora disponibilidad de inventario. Riesgo: requiere historial de datos consistente y modelo que se actualice regularmente.
+IA para predicción de EPP: reduce costos y mejora disponibilidad de inventario. Riesgo: requiere historial de datos consistente y actualización periódica del modelo.
