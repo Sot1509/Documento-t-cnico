@@ -1,24 +1,70 @@
 1. Arquitectura propuesta
 Arquitectura general
-flowchart LR
-    FRONTEND[React SPA]
-    API_GATEWAY[API Gateway]
-    EPP_SERVICE[Microservicio EPP]
-    CHEM_SERVICE[Microservicio Productos Químicos]
-    NOTIF_SERVICE[Microservicio Notificaciones]
-    BILLING_SERVICE[Microservicio Facturación]
-    POSTGRES[PostgreSQL]
-    KAFKA[Kafka/RabbitMQ]
 
-    FRONTEND -->|REST/GraphQL| API_GATEWAY
-    API_GATEWAY --> EPP_SERVICE
-    API_GATEWAY --> CHEM_SERVICE
-    EPP_SERVICE --> POSTGRES
-    CHEM_SERVICE --> POSTGRES
 
-    EPP_SERVICE -->|Eventos| KAFKA
-    KAFKA --> NOTIF_SERVICE
-    KAFKA --> BILLING_SERVICE
+Arquitectura propuesta – Microservicios
+```mermaid
+    flowchart TD
+    
+    subgraph Frontend["Frontend"]
+        A1[React SPA]:::frontend
+    end
+
+    subgraph Gateway["API Gateway"]
+        B1[API Gateway]:::gateway
+    end
+
+    subgraph Services["Microservicios"]
+        C1[EPP Service]:::service
+        C2[Productos Químicos Service]:::service
+        C3[Notificaciones Service]:::service
+        C4[Facturación Service]:::service
+    end
+
+    subgraph Data["Bases de Datos"]
+        D1[(PostgreSQL)]:::db
+    end
+
+    subgraph Queue["Mensajería Asíncrona"]
+        E1[(Kafka / RabbitMQ)]:::queue
+    end
+
+    subgraph DevOps["CI/CD & Contenedores"]
+        F1[Docker Containers]:::docker
+        F2[Kubernetes Orchestration]:::k8s
+        F3[CI/CD Pipeline]:::cicd
+    end
+
+    %% Flujo Síncrono
+    A1 -->|REST| B1
+    B1 --> C1
+    B1 --> C2
+    C1 --> D1
+    C2 --> D1
+
+    %% Flujo Asíncrono
+    C1 -->|Eventos| E1
+    E1 --> C3
+    E1 --> C4
+
+    %% DevOps
+    C1 --- F1
+    C2 --- F1
+    C3 --- F1
+    C4 --- F1
+    F1 --- F2
+    F2 --- F3
+
+    classDef frontend fill:#f9f,stroke:#333,stroke-width:1px, color:#000;
+    classDef gateway fill:#bbf,stroke:#333,stroke-width:1px, color:#000;
+    classDef service fill:#bfb,stroke:#333,stroke-width:1px, color:#000;
+    classDef db fill:#ffb,stroke:#333,stroke-width:1px, color:#000;
+    classDef queue fill:#fbb,stroke:#333,stroke-width:1px, color:#000;
+    classDef docker fill:#ddd,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5, color:#000;
+    classDef k8s fill:#eee,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5, color:#000;
+    classDef cicd fill:#faf,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5, color:#000;
+```
+
 
 
 Justificación:
@@ -27,15 +73,21 @@ Arquitectura basada en microservicios para escalar cada módulo independientemen
 
 API Gateway centraliza el acceso y la autenticación.
 
-Comunicación síncrona vía REST/GraphQL y asíncrona vía eventos para notificaciones y facturación.
+Comunicación síncrona vía REST eventos para notificaciones y facturación.
 
 Facilita integración futura con IA, analítica avanzada y nuevos módulos.
 
+
+
 2. Stack tecnológico y justificación
-Componente	Justificación
-Spring Boot	Framework robusto, escalable, soporta microservicios, integración fácil con PostgreSQL y mensajería. Incluye validación, seguridad y testing nativos.
-React 18	SPA moderna, reutilización de componentes, integración con APIs REST o GraphQL.
-PostgreSQL	Mejor soporte para consultas analíticas complejas, funciones avanzadas (JSONB, CTEs, window functions), transacciones robustas y particionamiento.
+
+
+- Spring Boot	Framework robusto, escalable, soporta microservicios, integración fácil con PostgreSQL y mensajería. Incluye validación, seguridad y testing nativos.
+  
+- React 18	SPA moderna, reutilización de componentes, integración con APIs REST o GraphQL.
+  
+- PostgreSQL	Mejor soporte para consultas analíticas complejas, funciones avanzadas (JSONB, CTEs, window functions), transacciones robustas y particionamiento.
+
 
 MySQL vs PostgreSQL:
 
@@ -55,9 +107,13 @@ Seguridad: Spring Security JWT/OAuth2
 
 Logging y monitorización: ELK Stack / Prometheus & Grafana
 
+
+
 3. Estrategia de datos
-Modelo de datos (ER Diagram)
-erDiagram
+
+Modelo de datos 
+```mermaid
+    erDiagram
     EMPRESAS ||--o{ PRODUCTOS : tiene
     EMPRESAS ||--o{ PEDIDOS : realiza
     PEDIDOS ||--o{ PEDIDO_ITEMS : contiene
@@ -98,8 +154,8 @@ erDiagram
         int pedido_id FK
         int epp_id FK
         int cantidad
-    }
-
+    }  
+```
 
 Relaciones:
 
@@ -110,6 +166,8 @@ Cada pedido puede incluir múltiples EPP (relación muchos a muchos vía pedido_
 El inventario de EPP se actualiza al aprobar pedidos.
 
 Permite consultas analíticas por tipo de EPP, área de la empresa y periodo.
+
+
 
 4. DevOps y despliegue
 Flujo CI/CD
@@ -128,8 +186,11 @@ Kubernetes para orquestación, escalabilidad automática y tolerancia a fallos
 
 Ventaja: portabilidad, despliegue reproducible y consistente
 
+
+
 5. Casos de uso de IA
 Predicción de consumo de EPP
+
 
 Problema: anticipar necesidades de EPP por empresa y tipo de riesgo químico
 
